@@ -1,0 +1,28 @@
+{
+  "niche": "stock_market",
+  "template": "pov_investment_growth",
+  "subject": {
+    "name": "NVIDIA",
+    "ticker": "NVDA",
+    "sector": "bourse"
+  },
+  "investment": {
+    "mode": "lump_sum",
+    "amount": 1000,
+    "currency": "EUR",
+    "startDate": "2019-01-02",
+    "endDate": "2026-08-17"
+  },
+  "language": "fr",
+  "tone": "curiosity",
+  "brand": {
+    "accountName": "Les Tendances Boursieres",
+    "seriesTag": "tendancesboursieres"
+  },
+  "publishing": {
+    "visibility": "PUBLIC_TO_EVERYONE",
+    "allowComments": true,
+    "allowDuet": false,
+    "allowStitch": false
+  }
+}
