@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "setup:browsers": "playwright install chromium",
     "brief": "node scripts/new-brief.mjs",
     "generate": "node scripts/generate.mjs",
     "render": "node scripts/render-video.mjs",
@@ -16,5 +20,8 @@
     "review:demo": "node scripts/direct-review-demo.mjs",
     "pipeline": "node scripts/pipeline.mjs",
     "run:sample": "node scripts/generate.mjs briefs/sample-airbus.json && node scripts/render-video.mjs outputs/latest"
+  },
+  "dependencies": {
+    "playwright": "^1.62.0"
   }
 }
