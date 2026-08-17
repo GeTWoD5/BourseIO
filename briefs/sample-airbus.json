@@ -1,0 +1,28 @@
+{
+  "niche": "stock_market",
+  "template": "pov_investment_growth",
+  "subject": {
+    "name": "Airbus",
+    "ticker": "AIR.PA",
+    "sector": "aeronautique"
+  },
+  "investment": {
+    "mode": "lump_sum",
+    "amount": 10000,
+    "currency": "EUR",
+    "startDate": "2006-01-02",
+    "endDate": "2026-08-17"
+  },
+  "language": "fr",
+  "tone": "curiosity",
+  "brand": {
+    "accountName": "Les Tendances Boursieres",
+    "seriesTag": "tendancesboursieres"
+  },
+  "publishing": {
+    "visibility": "PUBLIC_TO_EVERYONE",
+    "allowComments": true,
+    "allowDuet": false,
+    "allowStitch": false
+  }
+}
