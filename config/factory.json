@@ -1,0 +1,30 @@
+{
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSeconds": 24,
+    "format": "vertical_9_16"
+  },
+  "style": {
+    "background": "#09110f",
+    "surface": "#101c18",
+    "accent": "#5ee6a8",
+    "accentHot": "#f4c95d",
+    "danger": "#ff6b6b",
+    "text": "#f4f7f2",
+    "muted": "#9db0a6",
+    "grid": "rgba(244,247,242,0.14)",
+    "fontFamily": "Verdana, Geneva, sans-serif"
+  },
+  "caption": {
+    "maxHashtags": 6,
+    "defaultHashtags": ["bourse", "epargne", "investissement", "patrimoine", "libertefinanciere"]
+  },
+  "data": {
+    "provider": "yahoo",
+    "fallbackProvider": "synthetic",
+    "syntheticVolatility": 0.035,
+    "syntheticTrend": 0.0007
+  }
+}
