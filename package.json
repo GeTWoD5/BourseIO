@@ -1,0 +1,20 @@
+{
+  "name": "auto-tiktok-stock-video-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "brief": "node scripts/new-brief.mjs",
+    "generate": "node scripts/generate.mjs",
+    "render": "node scripts/render-video.mjs",
+    "tiktok:connect": "node scripts/tiktok-connect.mjs",
+    "tiktok:complete": "node scripts/tiktok-complete.mjs",
+    "tiktok:status": "node scripts/tiktok-status.mjs",
+    "tiktok:publish-status": "node scripts/tiktok-publish-status.mjs",
+    "publish": "node scripts/publish-tiktok.mjs",
+    "verify": "node scripts/verify-market-data.mjs",
+    "review:demo": "node scripts/direct-review-demo.mjs",
+    "pipeline": "node scripts/pipeline.mjs",
+    "run:sample": "node scripts/generate.mjs briefs/sample-airbus.json && node scripts/render-video.mjs outputs/latest"
+  }
+}
