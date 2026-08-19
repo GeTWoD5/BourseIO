@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { requireRuntimePackage } from "./lib/runtime-deps.mjs";
+import { renderVoiceover } from "./lib/voiceover.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -42,16 +43,12 @@ const voiceoverTextPath = path.join(outputDir, "voiceover.txt");
 const voiceoverPath = path.join(outputDir, "voiceover.wav");
 let voiceStatus = "skipped_missing_voiceover";
 let voiceError = null;
+let voiceEngine = null;
 if (existsSync(voiceoverTextPath)) {
   try {
-    await execFileAsync("powershell.exe", [
-      "-NoProfile",
-      "-ExecutionPolicy", "Bypass",
-      "-File", path.join(root, "scripts", "render-voiceover.ps1"),
-      "-TextPath", voiceoverTextPath,
-      "-OutputPath", voiceoverPath
-    ], { windowsHide: true });
-    voiceStatus = existsSync(voiceoverPath) ? "rendered" : "skipped_empty_voiceover";
+    const voiceResult = await renderVoiceover({ root, textPath: voiceoverTextPath, outputPath: voiceoverPath });
+    voiceStatus = voiceResult.rendered ? "rendered" : "skipped_empty_voiceover";
+    voiceEngine = voiceResult.engine;
   } catch (error) {
     voiceStatus = "skipped_voice_engine_error";
     voiceError = error.stderr?.split("\n").slice(-4).join("\n") ?? error.message;
@@ -87,6 +84,7 @@ await writeFile(path.join(outputDir, "render-status.json"), JSON.stringify({
   mp4Error,
   voicePath: voiceStatus === "rendered" ? voiceoverPath : null,
   voiceStatus,
+  voiceEngine,
   voiceError
 }, null, 2), "utf8");
 

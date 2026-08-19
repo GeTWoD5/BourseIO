@@ -40,17 +40,22 @@ Each folder in `outputs/<date>-<subject>-<mode>/` contains:
 
 Immediately after rendering, the delivery gate inspects H.264, 1080x1920, yuv420p, AAC audio, duration, local voice-over, subtitles, and cover. It then checks market data and caption. A video cannot be published unless every check has passed. You can run the technical inspection manually with `npm run inspect -- outputs/latest`.
 
-## From the work PC with VS Code Remote SSH
+## Depuis le PC de travail avec VS Code Remote SSH
 
-Connect VS Code to `getwod@100.75.192.65`, then open:
+Connectez VS Code à la machine Linux via son adresse ou son nom Tailscale,
+puis ouvrez :
 
 ```text
-C:\Users\GeTWoD\Documents\ChatGPT\Bourse.IO
+/home/bourseio/BourseIO
 ```
 
-In the **Ports** tab, open port `3847` labelled **Bourse.IO Studio**. VS Code securely forwards the cockpit to the browser on the work PC. The service itself remains bound to the home PC only.
+Dans l'onglet **Ports**, ouvrez le port `3847` intitulé **Bourse.IO Studio**.
+VS Code transfère ce port de façon privée vers le navigateur du PC de travail.
+Le service reste lié à `127.0.0.1` et n'est donc pas exposé sur le réseau.
 
-The studio starts automatically when the home PC session opens. If you need to start it manually, run `npm run dashboard`; if port 3847 is already occupied, it is simply already running.
+Sous Linux, installez l'unité `deploy/linux/bourseio.service` pour que le
+studio démarre automatiquement. Les détails sont dans
+`deploy/linux/README.md`.
 
 ## Manual creation
 
@@ -69,7 +74,10 @@ npm run setup:browsers
 copy .env.example .env
 ```
 
-A complete local `ffmpeg` must be available from `PATH` for H.264 MP4 output. You can set `FFMPEG_PATH` in `.env` to point at a specific `ffmpeg.exe`.
+Un `ffmpeg` complet doit être disponible dans `PATH` pour produire le MP4
+H.264. Vous pouvez définir `FFMPEG_PATH` dans `.env` pour indiquer un binaire
+précis. Sous Linux, installez également `espeak-ng` pour la voix off locale,
+ou configurez Piper pour une voix plus naturelle.
 
 ## TikTok
 
