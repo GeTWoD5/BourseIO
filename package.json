@@ -15,8 +15,10 @@
     "tiktok:complete": "node scripts/tiktok-complete.mjs",
     "tiktok:status": "node scripts/tiktok-status.mjs",
     "tiktok:publish-status": "node scripts/tiktok-publish-status.mjs",
+    "dashboard": "node scripts/dashboard-server.mjs",
     "publish": "node scripts/publish-tiktok.mjs",
     "verify": "node scripts/verify-market-data.mjs",
+    "inspect": "node scripts/inspect-video.mjs",
     "review:demo": "node scripts/direct-review-demo.mjs",
     "pipeline": "node scripts/pipeline.mjs",
     "run:sample": "node scripts/generate.mjs briefs/sample-airbus.json && node scripts/render-video.mjs outputs/latest"

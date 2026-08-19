@@ -7,7 +7,7 @@ import { requireEnv } from "./env.mjs";
 export function buildAuthorizeUrl({ state, codeChallenge }) {
   const clientKey = requireEnv("TIKTOK_CLIENT_KEY");
   const redirectUri = requireEnv("TIKTOK_REDIRECT_URI");
-  const scopes = process.env.TIKTOK_SCOPES ?? "user.info.basic,video.upload";
+  const scopes = process.env.TIKTOK_SCOPES ?? "user.info.basic,user.info.stats,video.list,video.upload";
   const query = [
     ["client_key", clientKey],
     ["scope", scopes],
@@ -18,7 +18,7 @@ export function buildAuthorizeUrl({ state, codeChallenge }) {
     ["code_challenge_method", "S256"]
   ].map(([key, value]) => `${key}=${encodeURIComponent(value)}`);
   return {
-    href: `https://www.tiktok.com/v2/auth/authorize/?${query.join("&").replace("user.info.basic%2Cvideo.upload", "user.info.basic,video.upload")}`
+    href: `https://www.tiktok.com/v2/auth/authorize/?${query.join("&").replaceAll("%2C", ",")}`
   };
 }
 

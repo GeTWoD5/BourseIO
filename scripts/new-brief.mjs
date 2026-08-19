@@ -7,14 +7,14 @@ const args = parseArgs(process.argv.slice(2));
 
 const name = args.name ?? args._[0];
 if (!name) {
-  console.log("Usage: node scripts/new-brief.mjs --name Airbus --ticker AIR.PA --amount 10000 --start 2006-01-02");
+  console.log("Usage: node scripts/new-brief.mjs --name Airbus --ticker AIR.PA --amount 10000 --start 2006-01-02 --template market_momentum");
   process.exit(1);
 }
 
 const mode = args.mode ?? "lump_sum";
 const brief = {
   niche: "stock_market",
-  template: "pov_investment_growth",
+  template: args.template ?? (mode === "monthly_dca" ? "monthly_dca" : "pov_investment_growth"),
   subject: {
     name,
     ticker: args.ticker ?? slugify(name).toUpperCase(),
