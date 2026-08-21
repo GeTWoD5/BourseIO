@@ -63,7 +63,7 @@ export function createStudioBrief(input, settings = DEFAULT_STUDIO_SETTINGS) {
     investment: { mode, amount, ...(mode === "monthly_dca" ? { monthlyAmount: positiveNumber(input.monthlyAmount, 100) } : {}), currency: "EUR", startDate: validDate(input.startDate) ?? settings.defaults.startDate, endDate: new Date().toISOString().slice(0, 10) },
     language: "fr",
     tone: ["curiosity", "educational", "punchy"].includes(input.tone) ? input.tone : settings.defaults.tone,
-    brand: { accountName: "Bourse.IO", seriesTag: "bourseio" },
+    brand: { accountName: "Bourse_IO", seriesTag: "bourseio" },
     // The final TikTok privacy and interaction choices are intentionally made
     // by the creator on the export screen, never preselected by the studio.
     publishing: { visibility: null, allowComments: false, allowDuet: false, allowStitch: false }

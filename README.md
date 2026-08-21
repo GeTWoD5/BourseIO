@@ -1,6 +1,6 @@
-# Bourse.IO Studio
+# Bourse_IO
 
-Bourse.IO Studio prepares vertical stock-market videos for TikTok from a simple theme. It runs only on the home PC: market data, video rendering, French voice-over, subtitles, queue, and TikTok handoff stay local.
+Bourse_IO prepares vertical stock-market videos for TikTok from a simple theme. It runs only on the home PC: market data, video rendering, French voice-over, subtitles, queue, and TikTok handoff stay local.
 
 ## Everyday workflow
 
@@ -49,7 +49,7 @@ puis ouvrez :
 /home/bourseio/BourseIO
 ```
 
-Dans l'onglet **Ports**, ouvrez le port `3847` intitulé **Bourse.IO Studio**.
+Dans l'onglet **Ports**, ouvrez le port `3847` intitulé **Bourse_IO**.
 VS Code transfère ce port de façon privée vers le navigateur du PC de travail.
 Le service reste lié à `127.0.0.1` et n'est donc pas exposé sur le réseau.
 
@@ -86,9 +86,9 @@ TikTok publishing needs an approved TikTok Developer app and valid credentials i
 - `TIKTOK_CLIENT_KEY`
 - `TIKTOK_CLIENT_SECRET`
 - `TIKTOK_REDIRECT_URI`
-- `TIKTOK_SCOPES` - use `user.info.basic,video.publish`. These are the only scopes requested by the current product: basic Login Kit authorization and Direct Post publishing.
+- `TIKTOK_SCOPES` - use `user.info.basic,video.publish,video.upload`. These scopes respectively support Login Kit, Direct Post, and the creator-controlled TikTok draft flow.
 
-The project uses the official connection workflow. Until the app is approved and an account is connected, videos remain local and ready in the queue. Before each upload, the dashboard queries TikTok for the latest creator information, honors the returned visibility and interaction options, and only uploads after explicit confirmation.
+The project uses the official connection workflow. Until the app is approved and an account is connected, videos remain local and ready in the queue. Before each Direct Post, the dashboard queries TikTok for the latest creator information, honors the returned visibility and interaction options, and only uploads after explicit confirmation. The creator can alternatively send a video to their TikTok inbox as a draft, then edit and publish it from TikTok.
 
 ## Local and private files
 
