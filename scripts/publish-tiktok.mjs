@@ -13,7 +13,7 @@ const outputDir = existsSync(input) && !input.endsWith("latest")
   ? path.resolve(input)
   : (await readFile(path.resolve(root, "outputs/latest"), "utf8")).trim();
 
-const mode = process.env.TIKTOK_POST_MODE ?? "draft";
+const mode = process.env.TIKTOK_POST_MODE ?? "direct";
 const videoPath = process.env.VIDEO_PATH ?? path.join(outputDir, "video.mp4");
 const accessToken = await getValidAccessToken(root);
 
@@ -21,39 +21,19 @@ if (!existsSync(videoPath)) {
   throw new Error(`Video file not found: ${videoPath}`);
 }
 
-const status = mode === "direct"
-  ? await directPost({ accessToken, outputDir, videoPath })
-  : await uploadDraft({ accessToken, outputDir, videoPath });
+if (mode !== "direct") {
+  throw new Error("Only TikTok Direct Post is supported. Open the Bourse.IO export screen to choose post settings and confirm the upload.");
+}
+
+const status = await directPost({ accessToken, outputDir, videoPath });
 
 await writeFile(path.join(outputDir, "publish-status.json"), `${JSON.stringify(status, null, 2)}\n`, "utf8");
 console.log(JSON.stringify(status, null, 2));
 
-async function uploadDraft({ accessToken, outputDir, videoPath }) {
-  const videoSize = statSync(videoPath).size;
-  const initBody = {
-    source_info: {
-      source: "FILE_UPLOAD",
-      video_size: videoSize,
-      chunk_size: videoSize,
-      total_chunk_count: 1
-    }
-  };
-
-  const initResult = await postJson("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", accessToken, initBody);
-  await uploadVideoFile(initResult.data.upload_url, videoPath, videoSize);
-
-  return {
-    status: "submitted_to_tiktok_inbox",
-    mode: "draft",
-    publish_id: initResult.data.publish_id,
-    message: "Open TikTok inbox to finish editing and post the uploaded video.",
-    outputDir
-  };
-}
-
 async function directPost({ accessToken, outputDir, videoPath }) {
   const payload = JSON.parse(await readFile(path.join(outputDir, "publish-payload.json"), "utf8"));
   const videoSize = statSync(videoPath).size;
+  if (!payload.privacy_level) throw new Error("A TikTok privacy level must be selected in the export screen before posting.");
   const initBody = {
     post_info: payload,
     source_info: {
@@ -72,7 +52,7 @@ async function directPost({ accessToken, outputDir, videoPath }) {
     mode: "direct",
     publish_id: initResult.data.publish_id,
     privacy_level: payload.privacy_level,
-    message: "Direct post submitted. If the app is unaudited, TikTok may restrict visibility to SELF_ONLY.",
+    message: "TikTok received the video. Processing can take a few minutes before it appears on the profile.",
     outputDir
   };
 }

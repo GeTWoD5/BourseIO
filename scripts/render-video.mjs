@@ -1,10 +1,11 @@
 import path from "node:path";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { requireRuntimePackage } from "./lib/runtime-deps.mjs";
+import { renderVoiceover } from "./lib/voiceover.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,21 +39,34 @@ const webmPath = path.join(outputDir, "video.webm");
 const tempVideoPath = await video.path();
 await rename(tempVideoPath, webmPath);
 
+const voiceoverTextPath = path.join(outputDir, "voiceover.txt");
+const voiceoverPath = path.join(outputDir, "voiceover.wav");
+let voiceStatus = "skipped_missing_voiceover";
+let voiceError = null;
+let voiceEngine = null;
+if (existsSync(voiceoverTextPath)) {
+  try {
+    const voiceResult = await renderVoiceover({ root, textPath: voiceoverTextPath, outputPath: voiceoverPath });
+    voiceStatus = voiceResult.rendered ? "rendered" : "skipped_empty_voiceover";
+    voiceEngine = voiceResult.engine;
+  } catch (error) {
+    voiceStatus = "skipped_voice_engine_error";
+    voiceError = error.stderr?.split("\n").slice(-4).join("\n") ?? error.message;
+  }
+}
+
 const ffmpegPath = findFfmpeg();
 const mp4Path = path.join(outputDir, "video.mp4");
 let mp4Status = "skipped_missing_ffmpeg";
 let mp4Error = null;
 if (ffmpegPath) {
   try {
-    await execFileAsync(ffmpegPath, [
-      "-y",
-      "-i", webmPath,
-      "-c:v", "libx264",
-      "-pix_fmt", "yuv420p",
-      "-r", "30",
-      "-movflags", "+faststart",
-      mp4Path
-    ]);
+    const args = ["-y", "-i", webmPath];
+    if (voiceStatus === "rendered") {
+      args.push("-i", voiceoverPath, "-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "160k", "-shortest");
+    }
+    args.push("-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30", "-movflags", "+faststart", mp4Path);
+    await execFileAsync(ffmpegPath, args);
     mp4Status = "rendered";
   } catch (error) {
     mp4Status = "skipped_ffmpeg_lacks_mp4";
@@ -67,12 +81,19 @@ await writeFile(path.join(outputDir, "render-status.json"), JSON.stringify({
   mp4Path: mp4Status === "rendered" ? mp4Path : null,
   coverPath: path.join(outputDir, "cover.png"),
   mp4Status,
-  mp4Error
+  mp4Error,
+  voicePath: voiceStatus === "rendered" ? voiceoverPath : null,
+  voiceStatus,
+  voiceEngine,
+  voiceError
 }, null, 2), "utf8");
 
 console.log(`Rendered WebM: ${webmPath}`);
 if (mp4Status === "rendered") {
   console.log(`Rendered MP4: ${mp4Path}`);
+}
+if (voiceStatus === "rendered") {
+  console.log(`Rendered voiceover: ${voiceoverPath}`);
 }
 console.log(`Cover image: ${path.join(outputDir, "cover.png")}`);
 
@@ -87,23 +108,7 @@ function findInstalledChromium() {
 }
 
 function findFfmpeg() {
-  const localAppData = process.env.LOCALAPPDATA;
-  const candidates = [
-    findWingetFfmpeg(),
-    "C:\\ffmpeg\\bin\\ffmpeg.exe",
-    "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
-    localAppData && path.join(localAppData, "ms-playwright", "ffmpeg-1011", "ffmpeg-win64.exe")
-  ].filter(Boolean);
-  return candidates.find((candidate) => existsSync(candidate));
-}
-
-function findWingetFfmpeg() {
-  const localAppData = process.env.LOCALAPPDATA;
-  if (!localAppData) return null;
-  const packagesDir = path.join(localAppData, "Microsoft", "WinGet", "Packages");
-  if (!existsSync(packagesDir)) return null;
-  const packageDir = readdirSync(packagesDir, { withFileTypes: true })
-    .find((entry) => entry.isDirectory() && entry.name.startsWith("Gyan.FFmpeg"));
-  if (!packageDir) return null;
-  return path.join(packagesDir, packageDir.name, "ffmpeg-9.0-full_build", "bin", "ffmpeg.exe");
+  // Playwright ships a capture helper named ffmpeg, but it cannot encode H.264.
+  // Use a full local ffmpeg from PATH, or let the user override it explicitly.
+  return process.env.FFMPEG_PATH ?? (process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
 }

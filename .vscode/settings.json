@@ -1,0 +1,10 @@
+{
+  "remote.autoForwardPorts": true,
+  "remote.portsAttributes": {
+    "3847": {
+      "label": "Bourse.IO Studio",
+      "onAutoForward": "openBrowser",
+      "requireLocalPort": true
+    }
+  }
+}

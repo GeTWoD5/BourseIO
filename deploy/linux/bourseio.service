@@ -1,0 +1,18 @@
+[Unit]
+Description=Bourse.IO Studio dashboard
+Wants=network-online.target
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+User=bourseio
+Group=bourseio
+WorkingDirectory=/home/bourseio/BourseIO
+Environment=HOME=/home/bourseio
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm run dashboard
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
