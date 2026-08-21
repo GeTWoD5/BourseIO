@@ -57,7 +57,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`Bourse.IO Studio is ready at http://127.0.0.1:${port}`);
+  console.log(`Bourse_IO is ready at http://127.0.0.1:${port}`);
   console.log("Keep this terminal running while using the dashboard.");
   void ensureStudioSettings();
   void runAutomationCycle();
@@ -69,7 +69,7 @@ async function snapshot() {
   const queue = await readQueue();
   const settings = await readStudioSettings();
   return {
-    app: { name: "Bourse.IO Studio", port },
+    app: { name: "Bourse_IO", port },
     tiktok: await tiktokState(),
     settings,
     suggestions: await currentSuggestions(queue.jobs),
@@ -200,9 +200,8 @@ async function exportInfoRoute(response, id) {
     if (job.status !== "ready" || !job.quality?.passed) throw new Error("La vidéo doit être prête et validée avant l'export TikTok.");
     const state = await tiktokState();
     if (!state.connected) throw new Error("Connectez un compte TikTok avant d'ouvrir l'écran d'export.");
-    const creator = await queryCreatorInfo();
     const duration = await videoDurationSeconds(path.join(job.outputDir, "video.mp4"));
-    if (duration > creator.max_video_post_duration_sec) throw new Error(`Cette vidéo dure ${Math.ceil(duration)} s, au-delà de la limite de ${creator.max_video_post_duration_sec} s de ce compte TikTok.`);
+    const creator = await queryCreatorInfo();
     sendJson(response, { job: publicJob(job), creator, duration });
   } catch (error) {
     sendJson(response, { error: error.message }, 400);
@@ -226,16 +225,24 @@ async function publishJob(id, postInfo) {
   if (!deliveryQuality?.passed) throw new Error("Le rapport de livraison technique est manquant ou invalide.");
   const state = await tiktokState();
   if (!state.connected) throw new Error("Connectez un compte TikTok avant l'envoi.");
-  const creator = await queryCreatorInfo();
-  const normalized = validatePostInfo(postInfo, creator);
-  const duration = await videoDurationSeconds(path.join(job.outputDir, "video.mp4"));
-  if (duration > creator.max_video_post_duration_sec) throw new Error(`La durée de la vidéo dépasse la limite actuelle de ce compte (${creator.max_video_post_duration_sec} s).`);
-  await writeFile(path.join(job.outputDir, "publish-payload.json"), `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
-  await updateJob(id, (item) => ({ ...item, status: "publishing", updatedAt: new Date().toISOString(), review: { exportedAt: new Date().toISOString(), creator: creator.creator_nickname, postInfo: normalized }, log: [...item.log, "Consentement confirmé : envoi à TikTok lancé."] }));
+  const mode = postInfo?.mode === "draft" ? "draft" : "direct";
+  let normalized = null;
+  let creator = null;
+  if (mode === "direct") {
+    creator = await queryCreatorInfo();
+    normalized = validatePostInfo(postInfo, creator);
+    const duration = await videoDurationSeconds(path.join(job.outputDir, "video.mp4"));
+    if (duration > creator.max_video_post_duration_sec) throw new Error(`La durée de la vidéo dépasse la limite actuelle de ce compte (${creator.max_video_post_duration_sec} s).`);
+    await writeFile(path.join(job.outputDir, "publish-payload.json"), `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  }
+  const review = { exportedAt: new Date().toISOString(), mode, postInfo: normalized };
+  if (creator) review.creator = creator.creator_nickname;
+  await updateJob(id, (item) => ({ ...item, status: "publishing", updatedAt: new Date().toISOString(), review, log: [...item.log, mode === "draft" ? "Consentement confirmé : envoi du brouillon à TikTok lancé." : "Consentement confirmé : publication directe TikTok lancée."] }));
   try {
-    const output = await runNode(["scripts/publish-tiktok.mjs", job.outputDir], { TIKTOK_POST_MODE: "direct" });
+    const output = await runNode(["scripts/publish-tiktok.mjs", job.outputDir], { TIKTOK_POST_MODE: mode });
     const result = await readJsonOptional(path.join(job.outputDir, "publish-status.json"));
-    return updateJob(id, (item) => ({ ...item, status: "published", updatedAt: new Date().toISOString(), publish: result, log: [...item.log, output, "TikTok a reçu la vidéo. Son traitement peut prendre quelques minutes."] }));
+    const receipt = mode === "draft" ? "TikTok a reçu le brouillon. Ouvrez sa notification TikTok pour l'éditer et le publier." : "TikTok a reçu la vidéo. Son traitement peut prendre quelques minutes.";
+    return updateJob(id, (item) => ({ ...item, status: "published", updatedAt: new Date().toISOString(), publish: result, log: [...item.log, output, receipt] }));
   } catch (error) {
     await updateJob(id, (item) => ({ ...item, status: "ready", error: error.message, updatedAt: new Date().toISOString(), log: [...item.log, `Échec d'envoi : ${error.message}`] }));
     throw error;

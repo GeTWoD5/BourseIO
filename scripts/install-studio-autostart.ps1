@@ -8,6 +8,6 @@ $localUser = "$env:COMPUTERNAME\$env:USERNAME"
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $localUser
 $principal = New-ScheduledTaskPrincipal -UserId $localUser -LogonType Interactive -RunLevel Limited
 
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Description "Démarre Bourse.IO Studio sur le PC maison au démarrage de session." -Force | Out-Null
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Description "Démarre Bourse_IO sur le PC maison au démarrage de session." -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
 Write-Host "Autostart installed: $taskName"

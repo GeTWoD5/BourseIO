@@ -7,7 +7,7 @@ import { requireEnv } from "./env.mjs";
 export function buildAuthorizeUrl({ state, codeChallenge }) {
   const clientKey = requireEnv("TIKTOK_CLIENT_KEY");
   const redirectUri = requireEnv("TIKTOK_REDIRECT_URI");
-  const scopes = process.env.TIKTOK_SCOPES ?? "user.info.basic,video.publish";
+  const scopes = process.env.TIKTOK_SCOPES ?? "user.info.basic,video.publish,video.upload";
   const query = [
     ["client_key", clientKey],
     ["scope", scopes],

@@ -21,11 +21,10 @@ if (!existsSync(videoPath)) {
   throw new Error(`Video file not found: ${videoPath}`);
 }
 
-if (mode !== "direct") {
-  throw new Error("Only TikTok Direct Post is supported. Open the Bourse.IO export screen to choose post settings and confirm the upload.");
-}
-
-const status = await directPost({ accessToken, outputDir, videoPath });
+if (!["direct", "draft"].includes(mode)) throw new Error("TikTok post mode must be direct or draft.");
+const status = mode === "direct"
+  ? await directPost({ accessToken, outputDir, videoPath })
+  : await uploadDraft({ accessToken, outputDir, videoPath });
 
 await writeFile(path.join(outputDir, "publish-status.json"), `${JSON.stringify(status, null, 2)}\n`, "utf8");
 console.log(JSON.stringify(status, null, 2));
@@ -53,6 +52,21 @@ async function directPost({ accessToken, outputDir, videoPath }) {
     publish_id: initResult.data.publish_id,
     privacy_level: payload.privacy_level,
     message: "TikTok received the video. Processing can take a few minutes before it appears on the profile.",
+    outputDir
+  };
+}
+
+async function uploadDraft({ accessToken, outputDir, videoPath }) {
+  const videoSize = statSync(videoPath).size;
+  const initResult = await postJson("https://open.tiktokapis.com/v2/post/publish/inbox/video/init/", accessToken, {
+    source_info: { source: "FILE_UPLOAD", video_size: videoSize, chunk_size: videoSize, total_chunk_count: 1 }
+  });
+  await uploadVideoFile(initResult.data.upload_url, videoPath, videoSize);
+  return {
+    status: "submitted_to_tiktok_inbox",
+    mode: "draft",
+    publish_id: initResult.data.publish_id,
+    message: "TikTok received the video as a draft. Open the TikTok inbox notification to edit and complete the post.",
     outputDir
   };
 }
