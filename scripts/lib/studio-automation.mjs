@@ -3,7 +3,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_STUDIO_SETTINGS = {
   automationEnabled: true,
   autoPublish: false,
-  publishMode: "draft",
+  publishMode: "direct",
   schedule: { days: [1, 2, 3, 4, 5], hour: 8, minute: 30 },
   defaults: { amount: 1000, startDate: "2018-01-02", tone: "curiosity" },
   lastAutomationDate: null
@@ -64,7 +64,9 @@ export function createStudioBrief(input, settings = DEFAULT_STUDIO_SETTINGS) {
     language: "fr",
     tone: ["curiosity", "educational", "punchy"].includes(input.tone) ? input.tone : settings.defaults.tone,
     brand: { accountName: "Bourse.IO", seriesTag: "bourseio" },
-    publishing: { visibility: input.visibility === "SELF_ONLY" ? "SELF_ONLY" : "PUBLIC_TO_EVERYONE", allowComments: true, allowDuet: false, allowStitch: false }
+    // The final TikTok privacy and interaction choices are intentionally made
+    // by the creator on the export screen, never preselected by the studio.
+    publishing: { visibility: null, allowComments: false, allowDuet: false, allowStitch: false }
   };
 }
 

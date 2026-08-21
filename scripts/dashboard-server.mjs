@@ -5,11 +5,10 @@ import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { buildAuthorizeUrl, createPkcePair, createState, exchangeCodeForToken, saveToken } from "./lib/tiktok-oauth.mjs";
+import { buildAuthorizeUrl, createPkcePair, createState, exchangeCodeForToken, getValidAccessToken, saveToken } from "./lib/tiktok-oauth.mjs";
 import { loadEnv } from "./lib/env.mjs";
 import { slugify } from "./lib/fs-utils.mjs";
 import { DEFAULT_STUDIO_SETTINGS, assessVideoQuality, buildEditorialSuggestions, createStudioBrief } from "./lib/studio-automation.mjs";
-import { fetchTikTokMetrics } from "./lib/tiktok-metrics.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dashboardDir = path.join(root, "dashboard");
@@ -20,8 +19,6 @@ const port = Number(process.env.DASHBOARD_PORT ?? 3847);
 let activeJobId = null;
 let suggestionCache = { value: null, updatedAt: 0 };
 let suggestionOffset = 0;
-let metricsCache = { value: null, updatedAt: 0 };
-const activePublicationIds = new Set();
 
 await loadEnv(root);
 await mkdir(path.join(dataDir, "briefs"), { recursive: true });
@@ -43,10 +40,10 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/settings") return updateStudioSettings(request, response);
     if (request.method === "POST" && url.pathname === "/api/automation/run") return runAutomationRoute(response);
     if (request.method === "POST" && url.pathname === "/api/suggestions/refresh") return refreshSuggestions(response);
-    if (request.method === "POST" && url.pathname === "/api/tiktok/metrics/refresh") return refreshTikTokMetrics(response);
     if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/run$/.test(url.pathname)) return runJobRoute(request, response, jobIdFrom(url.pathname));
-    if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/approve$/.test(url.pathname)) return approveJobRoute(request, response, jobIdFrom(url.pathname));
-    if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/publish$/.test(url.pathname)) return publishJobRoute(response, jobIdFrom(url.pathname));
+    if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/export$/.test(url.pathname)) return exportInfoRoute(response, jobIdFrom(url.pathname));
+    if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/publish$/.test(url.pathname)) return publishJobRoute(request, response, jobIdFrom(url.pathname));
+    if (request.method === "POST" && /^\/api\/jobs\/[^/]+\/publish-status$/.test(url.pathname)) return refreshPublishStatusRoute(response, jobIdFrom(url.pathname));
     if (request.method === "DELETE" && /^\/api\/jobs\/[^/]+$/.test(url.pathname)) return deleteJob(response, jobIdFrom(url.pathname));
     if (request.method === "POST" && url.pathname === "/api/tiktok/authorize") return startTikTokAuthorization(response);
     if (request.method === "POST" && url.pathname === "/api/tiktok/complete") return completeTikTokAuthorization(request, response);
@@ -65,8 +62,7 @@ server.listen(port, "127.0.0.1", () => {
   void ensureStudioSettings();
   void runAutomationCycle();
   void runPlannedProductions();
-  void runScheduledPublications();
-  setInterval(() => { void runAutomationCycle(); void runPlannedProductions(); void runScheduledPublications(); }, 30 * 1000);
+  setInterval(() => { void runAutomationCycle(); void runPlannedProductions(); }, 30 * 1000);
 });
 
 async function snapshot() {
@@ -77,7 +73,6 @@ async function snapshot() {
     tiktok: await tiktokState(),
     settings,
     suggestions: await currentSuggestions(queue.jobs),
-    metrics: await currentTikTokMetrics(),
     calendar: buildEditorialCalendar(queue.jobs, settings),
     jobs: queue.jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   };
@@ -97,8 +92,8 @@ async function createJob(request, response) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     title: name,
-    autoPublish: Boolean(input.autoPublish),
-    publishMode: input.publishMode === "direct" ? "direct" : "draft",
+    autoPublish: false,
+    publishMode: "direct",
     brief: {
       niche: "stock_market",
       template: ["pov_investment_growth", "market_momentum", "performance_recap"].includes(input.template) ? input.template : "pov_investment_growth",
@@ -199,52 +194,64 @@ async function processJob(id) {
   }
 }
 
-async function approveJobRoute(request, response, id) {
+async function exportInfoRoute(response, id) {
   try {
-    const input = await readBody(request);
     const job = await findJob(id);
-    if (job.status !== "ready" || !job.quality?.passed) throw new Error("La video doit etre prete et validee avant approbation.");
-    const scheduledFor = scheduledDate(input.scheduledFor);
-    const publishOnSchedule = Boolean(input.publishOnSchedule && scheduledFor);
-    const review = {
-      status: publishOnSchedule ? "scheduled" : "approved",
-      approvedAt: new Date().toISOString(),
-      scheduledFor,
-      publishOnSchedule
-    };
-    const updated = await updateJob(id, (item) => ({ ...item, review, updatedAt: new Date().toISOString(), log: [...item.log, publishOnSchedule ? `Video approuvee et programmee pour ${scheduledFor}.` : "Video approuvee pour publication manuelle."] }));
-    sendJson(response, { job: updated });
+    if (job.status !== "ready" || !job.quality?.passed) throw new Error("La vidéo doit être prête et validée avant l'export TikTok.");
+    const state = await tiktokState();
+    if (!state.connected) throw new Error("Connectez un compte TikTok avant d'ouvrir l'écran d'export.");
+    const creator = await queryCreatorInfo();
+    const duration = await videoDurationSeconds(path.join(job.outputDir, "video.mp4"));
+    if (duration > creator.max_video_post_duration_sec) throw new Error(`Cette vidéo dure ${Math.ceil(duration)} s, au-delà de la limite de ${creator.max_video_post_duration_sec} s de ce compte TikTok.`);
+    sendJson(response, { job: publicJob(job), creator, duration });
   } catch (error) {
     sendJson(response, { error: error.message }, 400);
   }
 }
 
-async function publishJobRoute(response, id) {
+async function publishJobRoute(request, response, id) {
   try {
-    const job = await publishJob(id, false);
+    const job = await publishJob(id, await readBody(request));
     sendJson(response, { job });
   } catch (error) {
     sendJson(response, { error: error.message }, 400);
   }
 }
 
-async function publishJob(id, automated) {
+async function publishJob(id, postInfo) {
   const job = await findJob(id);
-  if (job.status !== "ready" || !job.quality?.passed) throw new Error("The video must pass quality control before publication.");
-  if (!job.review?.approvedAt) throw new Error("Approve the video before publication.");
-  if (automated && (!job.review.publishOnSchedule || !job.review.scheduledFor)) throw new Error("This video is not approved for scheduled publication.");
+  if (job.status !== "ready" || !job.quality?.passed) throw new Error("La vidéo doit passer le contrôle qualité avant publication.");
+  if (postInfo?.expressConsent !== true) throw new Error("Votre consentement explicite est requis avant l'envoi à TikTok.");
   const deliveryQuality = await readJsonOptional(path.join(job.outputDir, "video-quality.json"));
-  if (!deliveryQuality?.passed) throw new Error("The technical delivery report is missing or invalid.");
+  if (!deliveryQuality?.passed) throw new Error("Le rapport de livraison technique est manquant ou invalide.");
   const state = await tiktokState();
-  if (!state.connected) throw new Error("Connect TikTok once before sending a video.");
-  await updateJob(id, (item) => ({ ...item, status: "publishing", updatedAt: new Date().toISOString(), log: [...item.log, automated ? "Publication automatique lancée." : "Envoi à TikTok lancé."] }));
+  if (!state.connected) throw new Error("Connectez un compte TikTok avant l'envoi.");
+  const creator = await queryCreatorInfo();
+  const normalized = validatePostInfo(postInfo, creator);
+  const duration = await videoDurationSeconds(path.join(job.outputDir, "video.mp4"));
+  if (duration > creator.max_video_post_duration_sec) throw new Error(`La durée de la vidéo dépasse la limite actuelle de ce compte (${creator.max_video_post_duration_sec} s).`);
+  await writeFile(path.join(job.outputDir, "publish-payload.json"), `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  await updateJob(id, (item) => ({ ...item, status: "publishing", updatedAt: new Date().toISOString(), review: { exportedAt: new Date().toISOString(), creator: creator.creator_nickname, postInfo: normalized }, log: [...item.log, "Consentement confirmé : envoi à TikTok lancé."] }));
   try {
-    const output = await runNode(["scripts/publish-tiktok.mjs", job.outputDir], { TIKTOK_POST_MODE: job.publishMode });
+    const output = await runNode(["scripts/publish-tiktok.mjs", job.outputDir], { TIKTOK_POST_MODE: "direct" });
     const result = await readJsonOptional(path.join(job.outputDir, "publish-status.json"));
-    return updateJob(id, (item) => ({ ...item, status: "published", updatedAt: new Date().toISOString(), publish: result, log: [...item.log, output, "TikTok a reçu la vidéo."] }));
+    return updateJob(id, (item) => ({ ...item, status: "published", updatedAt: new Date().toISOString(), publish: result, log: [...item.log, output, "TikTok a reçu la vidéo. Son traitement peut prendre quelques minutes."] }));
   } catch (error) {
     await updateJob(id, (item) => ({ ...item, status: "ready", error: error.message, updatedAt: new Date().toISOString(), log: [...item.log, `Échec d'envoi : ${error.message}`] }));
     throw error;
+  }
+}
+
+async function refreshPublishStatusRoute(response, id) {
+  try {
+    const job = await findJob(id);
+    if (!job.publish?.publish_id) throw new Error("Aucun envoi TikTok n'est encore associé à cette vidéo.");
+    const accessToken = await getValidAccessToken(root);
+    const result = await tiktokPostJson("https://open.tiktokapis.com/v2/post/publish/status/fetch/", accessToken, { publish_id: job.publish.publish_id });
+    const updated = await updateJob(id, (item) => ({ ...item, publish: { ...item.publish, latestStatus: result.data, checkedAt: new Date().toISOString() }, updatedAt: new Date().toISOString(), log: [...item.log, `Statut TikTok actualisé : ${result.data?.status ?? "en traitement"}.`] }));
+    sendJson(response, { job: updated });
+  } catch (error) {
+    sendJson(response, { error: error.message }, 400);
   }
 }
 
@@ -267,19 +274,6 @@ async function runPlannedProductions() {
   activeJobId = due.id;
   await updateJob(due.id, (item) => ({ ...item, status: "generating", error: null, updatedAt: new Date().toISOString(), log: [...item.log, "Production planifiee lancee."] }));
   void processJob(due.id).finally(() => { activeJobId = null; });
-  return due;
-}
-
-async function runScheduledPublications() {
-  const state = await tiktokState();
-  if (!state.connected) return null;
-  const queue = await readQueue();
-  const due = queue.jobs.find((job) => job.status === "ready" && job.quality?.passed && job.review?.publishOnSchedule && job.review?.scheduledFor && new Date(job.review.scheduledFor).getTime() <= Date.now() && !activePublicationIds.has(job.id));
-  if (!due) return null;
-  activePublicationIds.add(due.id);
-  void publishJob(due.id, true).catch(async (error) => {
-    await updateJob(due.id, (item) => ({ ...item, error: error.message, updatedAt: new Date().toISOString(), log: [...item.log, `Publication programmee en attente : ${error.message}`] }));
-  }).finally(() => activePublicationIds.delete(due.id));
   return due;
 }
 
@@ -345,15 +339,72 @@ async function serveMedia(response, pathname) {
 async function serveDashboard(response, pathname) {
   const filePath = pathname === "/" ? path.join(dashboardDir, "index.html") : path.resolve(dashboardDir, `.${pathname}`);
   if (!filePath.startsWith(dashboardDir) || !existsSync(filePath)) return sendJson(response, { error: "Page introuvable." }, 404);
-  response.writeHead(200, { "Content-Type": filePath.endsWith(".css") ? "text/css; charset=utf-8" : filePath.endsWith(".js") ? "application/javascript; charset=utf-8" : "text/html; charset=utf-8" });
+  const contentType = filePath.endsWith(".css") ? "text/css; charset=utf-8" : filePath.endsWith(".js") ? "application/javascript; charset=utf-8" : filePath.endsWith(".svg") ? "image/svg+xml" : "text/html; charset=utf-8";
+  response.writeHead(200, { "Content-Type": contentType });
   createReadStream(filePath).pipe(response);
 }
 
 async function tiktokState() {
   const tokenPath = path.join(root, ".tokens", "tiktok.json");
-  if (!existsSync(tokenPath)) return { connected: false, configured: hasTikTokConfig(), mode: process.env.TIKTOK_POST_MODE ?? "draft" };
+  if (!existsSync(tokenPath)) return { connected: false, configured: hasTikTokConfig(), mode: "direct" };
   const token = await readJsonOptional(tokenPath);
-  return { connected: Boolean(token?.access_token), configured: hasTikTokConfig(), mode: process.env.TIKTOK_POST_MODE ?? "draft", expiresAt: token?.expires_at ? new Date(token.expires_at).toISOString() : null };
+  return { connected: Boolean(token?.access_token), configured: hasTikTokConfig(), mode: "direct", expiresAt: token?.expires_at ? new Date(token.expires_at).toISOString() : null };
+}
+
+async function queryCreatorInfo() {
+  const accessToken = await getValidAccessToken(root);
+  const result = await tiktokPostJson("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", accessToken, {});
+  const data = result.data ?? {};
+  if (!data.creator_nickname || !Array.isArray(data.privacy_level_options) || !Number.isFinite(Number(data.max_video_post_duration_sec))) {
+    throw new Error("TikTok n'a pas renvoyé les paramètres nécessaires pour l'écran d'export.");
+  }
+  return data;
+}
+
+async function tiktokPostJson(url, accessToken, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify(body)
+  });
+  const result = await response.json();
+  if (!response.ok || result.error?.code !== "ok") throw new Error(result.error?.message || "TikTok n'a pas accepté cette demande.");
+  return result;
+}
+
+function validatePostInfo(input, creator) {
+  const title = cleanText(input?.title, 2200);
+  const privacyLevel = String(input?.privacyLevel ?? "");
+  if (!privacyLevel || !creator.privacy_level_options.includes(privacyLevel)) throw new Error("Choisissez une visibilité proposée par TikTok pour ce compte.");
+  const commercial = Boolean(input?.commercial);
+  const brandOrganic = commercial && Boolean(input?.brandOrganic);
+  const brandContent = commercial && Boolean(input?.brandContent);
+  if (commercial && !brandOrganic && !brandContent) throw new Error("Indiquez si la publication promeut votre marque, une marque partenaire, ou les deux.");
+  if (brandContent && privacyLevel === "SELF_ONLY") throw new Error("Le contenu de marque partenaire ne peut pas être publié en visibilité privée.");
+  return {
+    title,
+    privacy_level: privacyLevel,
+    disable_comment: creator.comment_disabled ? true : !Boolean(input?.allowComment),
+    disable_duet: creator.duet_disabled ? true : !Boolean(input?.allowDuet),
+    disable_stitch: creator.stitch_disabled ? true : !Boolean(input?.allowStitch),
+    brand_content_toggle: brandContent,
+    brand_organic_toggle: brandOrganic,
+    is_aigc: Boolean(input?.isAigc),
+    video_cover_timestamp_ms: 1000
+  };
+}
+
+async function videoDurationSeconds(videoPath) {
+  const { stdout } = await new Promise((resolve, reject) => {
+    execFile(process.env.FFPROBE_PATH ?? (process.platform === "win32" ? "ffprobe.exe" : "ffprobe"), ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", videoPath], { windowsHide: true }, (error, output) => error ? reject(error) : resolve({ stdout: output }));
+  });
+  const duration = Number.parseFloat(stdout);
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error("Impossible de vérifier la durée de la vidéo avant l'export TikTok.");
+  return duration;
+}
+
+function publicJob(job) {
+  return { id: job.id, title: job.title, preview: job.preview, outputDir: job.outputDir };
 }
 
 function hasTikTokConfig() {
@@ -448,16 +499,6 @@ async function refreshSuggestions(response) {
   sendJson(response, { suggestions: await currentSuggestions(queue.jobs) });
 }
 
-async function currentTikTokMetrics(force = false) {
-  if (!force && metricsCache.value && Date.now() - metricsCache.updatedAt < 5 * 60 * 1000) return metricsCache.value;
-  metricsCache = { value: await fetchTikTokMetrics(root), updatedAt: Date.now() };
-  return metricsCache.value;
-}
-
-async function refreshTikTokMetrics(response) {
-  sendJson(response, { metrics: await currentTikTokMetrics(true) });
-}
-
 async function updateStudioSettings(request, response) {
   const input = await readBody(request);
   const current = await readStudioSettings();
@@ -465,8 +506,8 @@ async function updateStudioSettings(request, response) {
   const next = {
     ...current,
     automationEnabled: typeof input.automationEnabled === "boolean" ? input.automationEnabled : current.automationEnabled,
-    autoPublish: typeof input.autoPublish === "boolean" ? input.autoPublish : current.autoPublish,
-    publishMode: input.publishMode === "direct" ? "direct" : input.publishMode === "draft" ? "draft" : current.publishMode,
+    autoPublish: false,
+    publishMode: "direct",
     schedule: {
       days: Array.isArray(schedule.days) ? schedule.days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6) : current.schedule.days,
       hour: Number.isInteger(schedule.hour) && schedule.hour >= 0 && schedule.hour <= 23 ? schedule.hour : current.schedule.hour,
@@ -504,7 +545,7 @@ async function runAutomationCycle(force = false) {
   const createdAt = new Date().toISOString();
   const job = {
     id: crypto.randomUUID(), status: "generating", createdAt, updatedAt: createdAt, title: idea.name,
-    autoPublish: settings.autoPublish, publishMode: settings.publishMode, source: "scheduled",
+    autoPublish: false, publishMode: "direct", source: "scheduled",
     brief: createStudioBrief({ ...idea, template: chooseTemplate(queue.jobs), amount: settings.defaults.amount, tone: settings.defaults.tone, startDate: idea.startDate ?? settings.defaults.startDate }, settings),
     log: [force ? "Production automatique lanc?e manuellement." : "Production planifi?e lanc?e."], outputDir: null, preview: null, publish: null, quality: null, error: null
   };

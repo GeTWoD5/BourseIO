@@ -145,10 +145,8 @@
       const n = spec.narrative;
       roundRect(56, 58, W - 112, 128, 28, "rgba(8,25,18,0.82)");
       strokeRoundRect(56, 58, W - 112, 128, 28, "rgba(120,245,186,0.34)", 2);
-      roundRect(78, 82, 64, 64, 20, style.accent);
-      text("B", 96, 131, 38, "#07100c", "900");
-      text("BOURSE.IO", 162, 108, 29, style.accent, "900");
-      text("DECODE LA BOURSE", 162, 140, 18, style.muted, "800");
+      text("ANALYSE DE MARCHÉ", 82, 111, 25, style.accent, "900");
+      text("Contenu éducatif", 82, 143, 18, style.muted, "800");
       pill(spec.narrative.templateLabel ?? spec.chart.periodLabel, W - 354, 91, 244, 42, style.accentHot, "#171006");
       pill(spec.brief.subject.ticker, W - 238, 142, 128, 30, "rgba(94,230,168,0.22)", style.text);
       const hookAlpha = clamp(1 - Math.max(0, seconds - 4.4) / 1.6, 0, 1);
@@ -246,7 +244,6 @@
     }
 
     function footer() {
-      text("@bourse.io", W - 230, 1870, 24, style.accent, "900");
       text(spec.narrative.disclaimer, 72, 1870, 21, style.muted, "500");
     }
 

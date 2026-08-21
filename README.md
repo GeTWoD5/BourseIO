@@ -17,15 +17,15 @@ Use the cockpit to:
 1. Select a suggested theme or enter a stock name and ticker.
 2. Select an angle: investment POV, market movement, or historical recap.
 3. Add it to the queue. The studio generates and validates the final video.
-4. Review the ready-to-post item, approve it, then choose a publication time. TikTok stays in draft mode until you explicitly authorize a scheduled or manual send.
+4. Review the ready-to-post item, open the TikTok export screen, choose the post settings and explicitly confirm the upload.
 
 ## Editorial calendar and approval
 
 Use **Production planifiee** when creating a video to place its rendering on a future date. The seven-day calendar shows automatic production slots, planned renders, and approved publication times.
 
-When a render is ready, use **Approuver et programmer**. This creates an explicit publication authorization only after every technical and data check has passed. A scheduled publication is sent only at the selected time and only when TikTok is connected. Re-rendering a video resets its approval, so changed media must be approved again.
+When a render is ready, use **Préparer l’export TikTok**. This retrieves the latest creator settings from TikTok, displays the target account and the video preview, then lets the creator edit the description, choose visibility and interactions, make commercial-content disclosures, and give explicit consent. A changed video must be reviewed again before it can be sent.
 
-The automatic pilot is enabled by default on weekdays at **08:30**. It cycles through a large editorial catalogue and offers ten refreshed suggestions at a time. If every recent idea has been used, it keeps rotating instead of running out. Schedule, pause, and draft/direct mode are configurable in the **Pilote automatique** card.
+The optional production assistant can prepare videos on weekdays at **08:30**. It never sends a video to TikTok: every export is initiated manually by the creator from the TikTok export screen.
 
 ## Result of each production
 
@@ -86,9 +86,9 @@ TikTok publishing needs an approved TikTok Developer app and valid credentials i
 - `TIKTOK_CLIENT_KEY`
 - `TIKTOK_CLIENT_SECRET`
 - `TIKTOK_REDIRECT_URI`
-- `TIKTOK_SCOPES` - include `user.info.basic,user.info.stats,video.list,video.upload` for the dashboard stats panel.
+- `TIKTOK_SCOPES` - use `user.info.basic,video.publish`. These are the only scopes requested by the current product: basic Login Kit authorization and Direct Post publishing.
 
-The project uses the official connection workflow. Once TikTok approves the requested scopes and you reconnect, the dashboard can show followers, account likes, recent video views, and engagement. TikTok's Display API supplies these account and public-video metrics. Until the app is approved and the account is connected, videos remain local and ready in the queue. Automatic publication is off by default and must be enabled in the cockpit only when you are ready.
+The project uses the official connection workflow. Until the app is approved and an account is connected, videos remain local and ready in the queue. Before each upload, the dashboard queries TikTok for the latest creator information, honors the returned visibility and interaction options, and only uploads after explicit confirmation.
 
 ## Local and private files
 

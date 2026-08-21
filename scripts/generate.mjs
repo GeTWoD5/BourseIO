@@ -30,7 +30,9 @@ await writeJson(path.join(outputDir, "market.json"), market);
 await writeJson(path.join(outputDir, "scenes.json"), scenes);
 await writeJson(path.join(outputDir, "publish-payload.json"), {
   title: narrative.description,
-  privacy_level: brief.publishing?.visibility ?? "SELF_ONLY",
+  // This file is only a proposed caption. Final post settings are collected
+  // from the creator in the TikTok export screen immediately before upload.
+  privacy_level: null,
   disable_duet: brief.publishing?.allowDuet === false,
   disable_comment: brief.publishing?.allowComments === false,
   disable_stitch: brief.publishing?.allowStitch === false,
