@@ -31,7 +31,7 @@ const brief = {
   language: args.language ?? "fr",
   tone: args.tone ?? "curiosity",
   brand: {
-    accountName: args.account ?? "Les Tendances Boursieres",
+    accountName: args.account ?? "Bourse_IO",
     seriesTag: args.series ?? "tendancesboursieres"
   },
   publishing: {

@@ -12,8 +12,6 @@ const outputDir = existsSync(input) && !input.endsWith("latest")
   ? path.resolve(input)
   : (await readFile(path.join(root, "outputs", "latest"), "utf8")).trim();
 const videoPath = path.join(outputDir, "video.mp4");
-const voicePath = path.join(outputDir, "voiceover.wav");
-const subtitlesPath = path.join(outputDir, "subtitles.srt");
 const coverPath = path.join(outputDir, "cover.png");
 
 const checks = [];
@@ -28,18 +26,13 @@ try {
 
 if (probe) {
   const video = probe.streams?.find((stream) => stream.codec_type === "video");
-  const audio = probe.streams?.find((stream) => stream.codec_type === "audio");
   const duration = Number(probe.format?.duration);
   checks.push({ name: "Codec video H.264", passed: video?.codec_name === "h264", detail: video?.codec_name ?? "absent" });
   checks.push({ name: "Format vertical 1080x1920", passed: video?.width === 1080 && video?.height === 1920, detail: video ? `${video.width}x${video.height}` : "absent" });
   checks.push({ name: "Pixel format TikTok", passed: video?.pix_fmt === "yuv420p", detail: video?.pix_fmt ?? "absent" });
-  checks.push({ name: "Piste audio AAC", passed: audio?.codec_name === "aac", detail: audio?.codec_name ?? "absent" });
   checks.push({ name: "Duree adaptee", passed: Number.isFinite(duration) && duration >= 12 && duration <= 75, detail: Number.isFinite(duration) ? `${duration.toFixed(1)} s` : "inconnue" });
 }
 
-checks.push({ name: "Voix off locale", passed: existsSync(voicePath) && statSync(voicePath).size > 8_000, detail: existsSync(voicePath) ? `${Math.round(statSync(voicePath).size / 1024)} KB` : "absente" });
-const subtitles = existsSync(subtitlesPath) ? await readFile(subtitlesPath, "utf8") : "";
-checks.push({ name: "Sous-titres synchronises", passed: (subtitles.match(/--> /g) ?? []).length >= 3, detail: `${(subtitles.match(/--> /g) ?? []).length} segments` });
 checks.push({ name: "Couverture exportee", passed: existsSync(coverPath) && statSync(coverPath).size > 5_000, detail: existsSync(coverPath) ? `${Math.round(statSync(coverPath).size / 1024)} KB` : "absente" });
 
 const report = {

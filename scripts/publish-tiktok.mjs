@@ -68,6 +68,9 @@ async function postJson(url, accessToken, body) {
   });
   const data = await response.json();
   if (!response.ok || data.error?.code !== "ok") {
+    if (data.error?.code === "unaudited_client_can_only_post_to_private_accounts") {
+      throw new Error("Client TikTok non audité : activez d'abord « Compte privé » dans les réglages de confidentialité du compte TikTok, puis choisissez « Moi uniquement » dans Bourse_IO.");
+    }
     throw new Error(`TikTok API failed: ${JSON.stringify(data)}`);
   }
   return data;

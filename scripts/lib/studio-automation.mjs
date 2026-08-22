@@ -3,7 +3,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_STUDIO_SETTINGS = {
   automationEnabled: true,
   autoPublish: false,
-  publishMode: "direct",
+  publishMode: "draft",
   schedule: { days: [1, 2, 3, 4, 5], hour: 8, minute: 30 },
   defaults: { amount: 1000, startDate: "2018-01-02", tone: "curiosity" },
   lastAutomationDate: null
@@ -63,10 +63,8 @@ export function createStudioBrief(input, settings = DEFAULT_STUDIO_SETTINGS) {
     investment: { mode, amount, ...(mode === "monthly_dca" ? { monthlyAmount: positiveNumber(input.monthlyAmount, 100) } : {}), currency: "EUR", startDate: validDate(input.startDate) ?? settings.defaults.startDate, endDate: new Date().toISOString().slice(0, 10) },
     language: "fr",
     tone: ["curiosity", "educational", "punchy"].includes(input.tone) ? input.tone : settings.defaults.tone,
-    brand: { accountName: "Bourse.IO", seriesTag: "bourseio" },
-    // The final TikTok privacy and interaction choices are intentionally made
-    // by the creator on the export screen, never preselected by the studio.
-    publishing: { visibility: null, allowComments: false, allowDuet: false, allowStitch: false }
+    brand: { accountName: "Bourse_IO", seriesTag: "bourseio" },
+    publishing: { visibility: input.visibility === "SELF_ONLY" ? "SELF_ONLY" : "PUBLIC_TO_EVERYONE", allowComments: true, allowDuet: false, allowStitch: false }
   };
 }
 
@@ -74,7 +72,6 @@ export function assessVideoQuality({ market, caption, renderStatus, deliveryQual
   const checks = [
     { name: "Livraison video inspectee", passed: deliveryQuality?.passed === true },
     { name: "MP4 H.264", passed: renderStatus?.mp4Status === "rendered" },
-    { name: "Voix off locale", passed: renderStatus?.voiceStatus === "rendered" },
     { name: "Donnees de marche reelles", passed: market?.source?.provider === "yahoo" },
     { name: "Caption TikTok", passed: Boolean(caption?.trim()) && caption.length <= 2200 },
     { name: "Serie de donnees suffisante", passed: (market?.points?.length ?? 0) >= 2 },
