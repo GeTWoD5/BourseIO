@@ -1,4 +1,4 @@
-export function buildNarrative(brief, market, durationSeconds = 24) {
+export function buildNarrative(brief, market) {
   const amount = formatMoney(brief.investment.amount, brief.investment.currency);
   const finalValue = formatMoney(market.finalValue, brief.investment.currency);
   const performance = `${market.performancePct > 0 ? "+" : ""}${market.performancePct}%`;
@@ -9,16 +9,6 @@ export function buildNarrative(brief, market, durationSeconds = 24) {
   const monthly = formatMoney(brief.investment.monthlyAmount ?? brief.investment.amount, brief.investment.currency);
   const copy = buildTemplateCopy({ template, subject, year, amount, monthly, isDca });
   const hashtags = buildHashtags(brief, template);
-  const voiceoverLines = [
-    copy.hook,
-    copy.context,
-    `Au total, le portefeuille atteint ${finalValue}, soit ${performance}.`,
-    copy.insight,
-    "C'est une simulation \u00e9ducative, pas un conseil financier.",
-    "Dis-moi quelle action tu veux voir ensuite."
-  ];
-  const voiceover = voiceoverLines.join(" ");
-
   return {
     hook: copy.hook,
     title: subject,
@@ -35,9 +25,6 @@ export function buildNarrative(brief, market, durationSeconds = 24) {
     cta: "Tu veux voir quelle action ensuite ?",
     caption: `${copy.caption} R\u00e9sultat: ${finalValue} (${performance}).`,
     hashtags,
-    voiceover,
-    voiceoverLines,
-    subtitles: buildSubtitles(voiceoverLines, durationSeconds),
     description: `${copy.caption} R\u00e9sultat: ${finalValue} (${performance}).\\n\\n${hashtags.map((tag) => `#${tag}`).join(" ")}`
   };
 }
@@ -90,23 +77,6 @@ function buildTemplateCopy({ template, subject, year, amount, monthly, isDca }) 
   };
 }
 
-function buildSubtitles(lines, duration) {
-  const start = 0.35;
-  const available = Math.max(8, duration - 1.2 - start);
-  const weight = lines.map((line) => Math.max(1, line.length)).reduce((sum, value) => sum + value, 0);
-  let cursor = start;
-  return lines.map((text) => {
-    const length = Math.max(1.5, available * (text.length / weight));
-    const segment = {
-      start: round(cursor, 2),
-      end: round(Math.min(duration - 0.35, cursor + length), 2),
-      text
-    };
-    cursor = segment.end;
-    return segment;
-  });
-}
-
 function buildHashtags(brief, template) {
   const subjectTag = brief.subject.name.toLowerCase().replace(/[^a-z0-9]+/g, "");
   const sectorTag = brief.subject.sector?.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -119,9 +89,4 @@ function buildHashtags(brief, template) {
 
 function formatMoney(value, currency) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: value >= 1000 ? 0 : 2 }).format(value);
-}
-
-function round(value, decimals) {
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
 }

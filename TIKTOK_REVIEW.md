@@ -1,39 +1,33 @@
-# TikTok review resubmission checklist
+# TikTok App Review — Bourse_IO Studio
 
-## Requested products and scopes
+## Products and scopes
 
-Select only these products and scopes in TikTok for Developers:
+- Login Kit: `user.info.basic` for the connected creator identity.
+- Dashboard metrics: `user.info.stats` and `video.list` for the existing statistics panel (followers, engagement and recent videos).
+- Content Posting API — Direct Post: `video.publish` for a creator-confirmed direct post.
+- Content Posting API — Upload: `video.upload` for a creator-confirmed TikTok Inbox Draft.
 
-- Login Kit: `user.info.basic` (added by Login Kit)
-- Content Posting API — Direct Post: `video.publish`
-
-Do not select `video.upload`, `video.list`, or `user.info.stats` unless they are implemented again and demonstrated in a future review video. Update the local `.env` to the same exact value:
+Use this same exact scope value in the VM `.env`:
 
 ```text
-TIKTOK_SCOPES=user.info.basic,video.publish
-TIKTOK_POST_MODE=direct
+TIKTOK_SCOPES=user.info.basic,user.info.stats,video.list,video.publish,video.upload
 ```
 
-## Website fields in the portal
+The production calendar may generate videos automatically, but it never sends content to TikTok. Every TikTok transfer is opened manually by the creator, requires explicit consent, and offers either Direct Post or a TikTok Inbox Draft.
 
-- Website URL: `https://getwod5.github.io/BourseIO/`
-- Privacy Policy: `https://getwod5.github.io/BourseIO/privacy.html`
-- Terms of Service: `https://getwod5.github.io/BourseIO/terms.html`
-- Redirect URI: `https://getwod5.github.io/BourseIO/tiktok-callback.html`
+## Apply Reason
 
-The public website must be deployed before resubmission. It is a product page, not a login or landing-only page, and links to the legal pages. The Bourse.IO Studio icon is present in the browser tab and at the top of each legal page. Upload [`app-icon-512.png`](app-icon-512.png) in the TikTok app's **App icon** field.
+`Bourse_IO Studio lets creators generate original educational market videos, review quality checks and manage their TikTok performance metrics. The creator connects their own TikTok account, views followers and recent-video metrics, then manually chooses either Direct Post or a TikTok Inbox Draft. Direct Post shows the account, editable caption, TikTok-provided visibility and interaction settings, commercial-content disclosure controls and explicit consent. A draft is transferred only after explicit consent and is edited and published by the creator in TikTok. No content is published automatically.`
 
-## Video to attach to the application
+## Demo video
 
-Record one continuous 2–3 minute screen capture using a TikTok sandbox account. Do not show any client secret or access token. Generate a new video after this update; older files in `outputs/` may contain the former Bourse.IO overlay and must not be used for the review or posting.
+Record one continuous sandbox capture. Do not reveal a Client Secret, OAuth code or access token.
 
-1. Open the public website and show its Privacy Policy and Terms links.
-2. Run `npm run dashboard` and open the studio.
-3. Click **Connecter TikTok**, show TikTok authorization for `user.info.basic` and `video.publish`, and return to the studio.
-4. Create or open a ready video. Click **Préparer l’export TikTok**.
-5. Show the video preview and the TikTok account nickname returned by `creator_info/query`.
-6. Show that privacy starts with “Choisissez une visibilité”, then select an available option. Show that unavailable Comment/Duet/Stitch options are disabled when TikTok returns them as disabled.
-7. Edit the description, show the commercial-content disclosure controls and the TikTok music-usage consent text.
-8. Tick the explicit-consent checkbox and click **Publier sur TikTok**. Show the processing notice and use **Actualiser le statut TikTok**.
-
-In the portal’s Apply Reason, state: “Bourse.IO Studio enables independent creators to create and manually publish original educational market videos to their own TikTok accounts. It uses Login Kit and the Content Posting API Direct Post flow. The creator always sees a preview, edits the caption, selects TikTok-provided privacy and interaction settings, makes any required commercial-content disclosure, and explicitly confirms each upload. No automatic publishing is performed.”
+1. Show the public Bourse_IO page, its icon, Privacy Policy and Terms links.
+2. Open the Bourse_IO Studio dashboard on the VM.
+3. Connect a sandbox account and show the authorization for all five scopes.
+4. Show the dashboard statistics panel and refresh the followers/recent-video metrics.
+5. Produce or open a quality-validated video, then approve it for manual export.
+6. Select **Préparer l'export TikTok**. Show the creator account, preview, caption and direct-post privacy/interactions controls.
+7. Give explicit consent and make a private Direct Post. Show the processing status.
+8. Open a second validated video, select **Envoyer comme brouillon TikTok**, give consent, send it, then show the TikTok inbox notification used to finish editing and publishing.

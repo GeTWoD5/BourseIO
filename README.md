@@ -1,6 +1,6 @@
-# Bourse.IO Studio
+# Bourse_IO Studio
 
-Bourse.IO Studio prepares vertical stock-market videos for TikTok from a simple theme. It runs only on the home PC: market data, video rendering, French voice-over, subtitles, queue, and TikTok handoff stay local.
+Bourse_IO Studio prepares vertical stock-market videos for TikTok from a simple theme. It runs only on the home PC: market data, video rendering, queue, and TikTok handoff stay local.
 
 ## Everyday workflow
 
@@ -17,28 +17,26 @@ Use the cockpit to:
 1. Select a suggested theme or enter a stock name and ticker.
 2. Select an angle: investment POV, market movement, or historical recap.
 3. Add it to the queue. The studio generates and validates the final video.
-4. Review the ready-to-post item, open the TikTok export screen, choose the post settings and explicitly confirm the upload.
+4. Review the ready-to-post item, approve it, then choose a publication time. TikTok stays in draft mode until you explicitly authorize a scheduled or manual send.
 
 ## Editorial calendar and approval
 
 Use **Production planifiee** when creating a video to place its rendering on a future date. The seven-day calendar shows automatic production slots, planned renders, and approved publication times.
 
-When a render is ready, use **Préparer l’export TikTok**. This retrieves the latest creator settings from TikTok, displays the target account and the video preview, then lets the creator edit the description, choose visibility and interactions, make commercial-content disclosures, and give explicit consent. A changed video must be reviewed again before it can be sent.
+When a render is ready, use **Approuver et programmer**. This creates an explicit publication authorization only after every technical and data check has passed. A scheduled publication is sent only at the selected time and only when TikTok is connected. Re-rendering a video resets its approval, so changed media must be approved again.
 
-The optional production assistant can prepare videos on weekdays at **08:30**. It never sends a video to TikTok: every export is initiated manually by the creator from the TikTok export screen.
+The automatic pilot is enabled by default on weekdays at **08:30**. It cycles through a large editorial catalogue and offers ten refreshed suggestions at a time. If every recent idea has been used, it keeps rotating instead of running out. Schedule, pause, and draft/direct mode are configurable in the **Pilote automatique** card.
 
 ## Result of each production
 
 Each folder in `outputs/<date>-<subject>-<mode>/` contains:
 
-- `video.mp4`: H.264 / AAC vertical video compatible with TikTok.
+- `video.mp4`: H.264 vertical video compatible with TikTok.
 - `video.webm`: local browser render.
-- `voiceover.wav`: French voice-over made locally with Windows voices.
-- `subtitles.srt`: synchronized subtitle file.
 - `cover.png`, `caption.txt`, and `publish-payload.json`.
 - `market.json`, `scenes.json`, and `render-status.json` for traceability.
 
-Immediately after rendering, the delivery gate inspects H.264, 1080x1920, yuv420p, AAC audio, duration, local voice-over, subtitles, and cover. It then checks market data and caption. A video cannot be published unless every check has passed. You can run the technical inspection manually with `npm run inspect -- outputs/latest`.
+Immediately after rendering, the delivery gate inspects H.264, 1080x1920, yuv420p, duration, and cover. It then checks market data and caption. A video cannot be published unless every check has passed. You can run the technical inspection manually with `npm run inspect -- outputs/latest`.
 
 ## Depuis le PC de travail avec VS Code Remote SSH
 
@@ -49,7 +47,7 @@ puis ouvrez :
 /home/bourseio/BourseIO
 ```
 
-Dans l'onglet **Ports**, ouvrez le port `3847` intitulé **Bourse.IO Studio**.
+Dans l'onglet **Ports**, ouvrez le port `3847` intitulé **Bourse_IO Studio**.
 VS Code transfère ce port de façon privée vers le navigateur du PC de travail.
 Le service reste lié à `127.0.0.1` et n'est donc pas exposé sur le réseau.
 
@@ -76,8 +74,7 @@ copy .env.example .env
 
 Un `ffmpeg` complet doit être disponible dans `PATH` pour produire le MP4
 H.264. Vous pouvez définir `FFMPEG_PATH` dans `.env` pour indiquer un binaire
-précis. Sous Linux, installez également `espeak-ng` pour la voix off locale,
-ou configurez Piper pour une voix plus naturelle.
+précis.
 
 ## TikTok
 
@@ -86,9 +83,9 @@ TikTok publishing needs an approved TikTok Developer app and valid credentials i
 - `TIKTOK_CLIENT_KEY`
 - `TIKTOK_CLIENT_SECRET`
 - `TIKTOK_REDIRECT_URI`
-- `TIKTOK_SCOPES` - use `user.info.basic,video.publish`. These are the only scopes requested by the current product: basic Login Kit authorization and Direct Post publishing.
+- `TIKTOK_SCOPES` - use `user.info.basic,user.info.stats,video.list,video.publish,video.upload` for Login Kit, the dashboard metrics, Direct Post, and TikTok Inbox Drafts.
 
-The project uses the official connection workflow. Until the app is approved and an account is connected, videos remain local and ready in the queue. Before each upload, the dashboard queries TikTok for the latest creator information, honors the returned visibility and interaction options, and only uploads after explicit confirmation.
+The project uses the official connection workflow. Once TikTok approves the requested scopes and you reconnect, the dashboard can show followers, account likes, recent video views, and engagement. TikTok's Display API supplies these account and public-video metrics. Until the app is approved and the account is connected, videos remain local and ready in the queue. Automatic publication is off by default and must be enabled in the cockpit only when you are ready.
 
 ## Local and private files
 
