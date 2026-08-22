@@ -1,6 +1,6 @@
 import { getValidAccessToken } from "./tiktok-oauth.mjs";
 
-const USER_FIELDS = "open_id,display_name,avatar_url,username,follower_count,following_count,likes_count,video_count";
+const USER_FIELDS = "open_id,display_name,avatar_url,follower_count,following_count,likes_count,video_count";
 const VIDEO_FIELDS = "id,create_time,cover_image_url,share_url,video_description,duration,like_count,comment_count,share_count,view_count";
 
 export async function fetchTikTokMetrics(root) {
